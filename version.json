@@ -1,0 +1,5 @@
+{
+  "version": "1.9.0",
+  "buildDate": "2026-07-18",
+  "notes": "Markov Chain Lanjutan (5 pengembangan): 5-state +Overstock, prediksi order-2 (memori 2 hari), matriks musiman per bulan, estimasi hari sampai Habis (absorbing state), validasi rolling 3-fold. Diakses via tombol Detail per SKU di Monitoring, dihitung on-demand agar performa tetap ringan."
+}
