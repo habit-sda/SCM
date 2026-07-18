@@ -4916,6 +4916,68 @@ function buildLostOfSale(){
         +'</div></div></div>').join('');
 }
 
+// ══════════════════════════════════════════════════════
+// AUTO VERSION CHECK — Bandingkan versi yang tertanam di
+// file ini vs version.json di server (hosting). Jika BEDA,
+// tampilkan popup changelog + ajakan update. Jika SAMA,
+// tidak muncul apapun. Berjalan independen dari Service
+// Worker — lebih andal untuk hosting statis (GitHub Pages,
+// dll) yang tidak selalu punya SW aktif.
+// ══════════════════════════════════════════════════════
+const CURRENT_APP_VERSION='1.9.0'; // WAJIB disamakan manual dgn version.json setiap rilis baru
+
+async function _checkForUpdate(){
+  try{
+    const res=await fetch('./version.json?t='+Date.now(),{cache:'no-store'});
+    if(!res.ok) return; // file tidak ada (mis. dibuka langsung sbg file lokal) — diamkan saja
+    const data=await res.json();
+    if(!data.version) return;
+    if(data.version===CURRENT_APP_VERSION) return; // sudah versi terbaru, JANGAN tampilkan popup
+    _showVersionUpdatePopup(data);
+  }catch(e){
+    // Gagal fetch (offline, CORS, dll) — diamkan, jangan ganggu user dgn error
+    console.warn('[Version Check] tidak bisa cek update:',e);
+  }
+}
+
+function _showVersionUpdatePopup(remoteData){
+  // Jangan tampilkan ulang di sesi yang sama jika user sudah menutupnya utk versi ini
+  try{
+    if(sessionStorage.getItem('dismissedUpdateVersion')===remoteData.version) return;
+  }catch(e){}
+
+  const modal=document.getElementById('version-update-modal');
+  const body=document.getElementById('version-update-body');
+  if(!modal||!body) return;
+
+  body.innerHTML=
+    div('font-size:11px;color:#64748b;margin-bottom:10px',
+      'Versi Anda saat ini: <b>v'+CURRENT_APP_VERSION+'</b> &nbsp;→&nbsp; Versi terbaru: <b>v'+remoteData.version+'</b>')
+    +div('background:#f8fafc;border-radius:8px;padding:12px 14px;font-size:11px;color:#374151;line-height:1.6',
+      remoteData.notes||'Ada pembaruan sistem terbaru.');
+
+  modal.style.display='flex';
+
+  document.getElementById('version-update-dismiss').onclick=function(){
+    try{ sessionStorage.setItem('dismissedUpdateVersion',remoteData.version); }catch(e){}
+    modal.style.display='none';
+  };
+  document.getElementById('version-update-apply').onclick=function(){
+    if('caches' in window){
+      caches.keys().then(names=>Promise.all(names.map(n=>caches.delete(n))))
+        .finally(()=>window.location.reload());
+    } else {
+      window.location.reload();
+    }
+  };
+}
+
+// Cek saat halaman dimuat, lalu ulangi tiap 5 menit selama app terbuka
+window.addEventListener('load',function(){
+  _checkForUpdate();
+  setInterval(_checkForUpdate,5*60*1000);
+});
+
 function showChangelog(){const m=document.getElementById('changelog-modal');if(m)m.style.display='flex';}
 function hideChangelog(){const m=document.getElementById('changelog-modal');if(m)m.style.display='none';}
 function showABCXYZInfo(){const m=document.getElementById('abcxyz-info-modal');if(m)m.style.display='flex';}
@@ -6555,7 +6617,7 @@ function _swt(uid,tab){
 <div style="text-align:center;padding:16px 20px;margin-top:8px;border-top:1px solid var(--line);font-size:10px;color:var(--ink3);background:var(--card2)">
   <span style="font-weight:700;color:var(--ink2)">SCM System</span>
   &nbsp;·&nbsp;
-  <span onclick="showChangelog()" style="background:#00875A;color:#fff;padding:2px 8px;border-radius:10px;font-weight:700;font-size:9px;cursor:pointer;user-select:none" title="Lihat history update">v1.6.0 📋</span>
+  <span onclick="showChangelog()" style="background:#00875A;color:#fff;padding:2px 8px;border-radius:10px;font-weight:700;font-size:9px;cursor:pointer;user-select:none" title="Lihat history update">v1.9.0 📋</span>
   &nbsp;·&nbsp;
   Juli 2026
   &nbsp;·&nbsp;
@@ -6642,6 +6704,22 @@ function _swt(uid,tab){
 </div>
 
 
+
+<!-- VERSION UPDATE MODAL -->
+<div id="version-update-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:16px;width:420px;max-width:100%;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="padding:18px 22px;background:linear-gradient(135deg,#00875A,#006644)">
+      <div style="font-size:15px;font-weight:800;color:#fff">🔄 Versi Baru Tersedia</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.75);margin-top:2px">Sistem SCM sudah diperbarui — data yang sedang diproses tidak hilang</div>
+    </div>
+    <div id="version-update-body" style="padding:18px 22px"></div>
+    <div style="padding:14px 22px;display:flex;gap:8px;border-top:1px solid #e2e8f0">
+      <button id="version-update-apply" style="flex:1;border:none;border-radius:8px;padding:10px;font-size:12px;font-weight:700;cursor:pointer;background:#00875A;color:#fff">✅ Update Sekarang</button>
+      <button id="version-update-dismiss" style="border:1px solid #e2e8f0;border-radius:8px;padding:10px 16px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#64748b">Nanti</button>
+    </div>
+  </div>
+</div>
+
 <!-- MARKOV DETAIL MODAL -->
 <div id="markov-detail-modal" onclick="if(event.target===this)hideMarkovDetail()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;padding:16px">
   <div style="background:#fff;border-radius:16px;width:640px;max-width:100%;max-height:88vh;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);display:flex;flex-direction:column">
@@ -6680,12 +6758,51 @@ function _swt(uid,tab){
     <!-- Content -->
     <div style="overflow-y:auto;padding:20px 22px;flex:1">
 
+      <!-- v1.9.0 -->
+      <div style="margin-bottom:22px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <span style="background:#00875A;color:#fff;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:800">v1.9.0</span>
+          <span style="font-size:11px;color:#94a3b8">Juli 2026</span>
+          <span style="background:#dcfce7;color:#16a34a;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px">TERBARU</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;gap:10px"><span style="font-size:16px">🔬</span><div><b style="font-size:12px">Markov Chain Lanjutan</b><div style="font-size:11px;color:#64748b">5 pengembangan: 5-state +Overstock, prediksi order-2, matriks musiman, estimasi hari sampai Habis, validasi rolling 3-fold. Diakses on-demand per SKU di Monitoring.</div></div></div>
+        </div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin-bottom:20px">
+
+      <!-- v1.8.0 -->
+      <div style="margin-bottom:22px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <span style="background:#475569;color:#fff;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:800">v1.8.0</span>
+          <span style="font-size:11px;color:#94a3b8">Juli 2026</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;gap:10px"><span style="font-size:16px">ℹ️</span><div><b style="font-size:12px">Popup Penjelasan ABC-XYZ</b><div style="font-size:11px;color:#64748b">Detail 9 kombinasi kode klasifikasi (AX–CZ) beserta rekomendasi aksi, plus insight otomatis dari Markov Chain di Monitoring.</div></div></div>
+        </div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin-bottom:20px">
+
+      <!-- v1.7.0 -->
+      <div style="margin-bottom:22px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <span style="background:#475569;color:#fff;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:800">v1.7.0</span>
+          <span style="font-size:11px;color:#94a3b8">Juli 2026</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;gap:10px"><span style="font-size:16px">📦</span><div><b style="font-size:12px">Days of Coverage, ABC-XYZ &amp; Prediksi Markov</b><div style="font-size:11px;color:#64748b">Analisis mandiri read-only: estimasi tanggal habis stok, klasifikasi volume/volatilitas per SKU, dan model probabilitas status stok 7 hari ke depan.</div></div></div>
+        </div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin-bottom:20px">
+
       <!-- v1.6.0 -->
       <div style="margin-bottom:22px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-          <span style="background:#00875A;color:#fff;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:800">v1.6.0</span>
+          <span style="background:#475569;color:#fff;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:800">v1.6.0</span>
           <span style="font-size:11px;color:#94a3b8">Juli 2026</span>
-          <span style="background:#dcfce7;color:#16a34a;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px">TERBARU</span>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px">
           <div style="display:flex;gap:10px"><span style="font-size:16px">📐</span><div><b style="font-size:12px">Tab Rumus & Metode</b><div style="font-size:11px;color:#64748b">Referensi lengkap semua rumus perhitungan sistem, plus tabel metode aktif per SKU.</div></div></div>
