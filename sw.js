@@ -2,7 +2,7 @@
 // SCM System — Service Worker
 // Menangani: offline cache + deteksi versi baru otomatis
 // ══════════════════════════════════════════════════════
-const APP_VERSION = '1.9.0';
+const APP_VERSION = '1.9.1';
 const CACHE_NAME  = 'scm-cache-v' + APP_VERSION;
 
 const CORE_ASSETS = [

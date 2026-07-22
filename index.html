@@ -4933,13 +4933,24 @@ function buildLostOfSale(){
 // ══════════════════════════════════════════════════════
 const CURRENT_APP_VERSION='1.9.1'; // WAJIB disamakan manual dgn version.json setiap rilis baru
 
+// Bandingkan 2 versi semver "x.y.z" → 1 jika a>b, -1 jika a<b, 0 jika sama
+function _compareVersion(a,b){
+  const pa=a.split('.').map(Number), pb=b.split('.').map(Number);
+  for(let i=0;i<Math.max(pa.length,pb.length);i++){
+    const x=pa[i]||0, y=pb[i]||0;
+    if(x!==y) return x>y?1:-1;
+  }
+  return 0;
+}
+
 async function _checkForUpdate(){
   try{
     const res=await fetch('./version.json?t='+Date.now(),{cache:'no-store'});
     if(!res.ok) return; // file tidak ada (mis. dibuka langsung sbg file lokal) — diamkan saja
     const data=await res.json();
     if(!data.version) return;
-    if(data.version===CURRENT_APP_VERSION) return; // sudah versi terbaru, JANGAN tampilkan popup
+    const cmp=_compareVersion(data.version, CURRENT_APP_VERSION);
+    if(cmp<=0) return; // versi server sama atau malah lebih lama — JANGAN tampilkan popup
     _showVersionUpdatePopup(data);
   }catch(e){
     // Gagal fetch (offline, CORS, dll) — diamkan, jangan ganggu user dgn error
